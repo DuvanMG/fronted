@@ -12,11 +12,19 @@ const withAuth = (WrappedComponent) => {
       if (!token) {
         router.replace('/login');
       }
-    }, []);
+    }, [router]);
 
     // Mientras no hay redirección, renderizar la página
     return <WrappedComponent {...props} />;
   };
 };
 
+withAuth.displayName = "withAuth";
 export default withAuth;
+
+
+
+// const WithAuth = () => {
+//   // component logic
+// };
+// WithAuth.displayName = "WithAuth"; // Add this line

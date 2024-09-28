@@ -1,4 +1,5 @@
-export default {
+const sidebarStyles = {
+  
     content: {
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', paddingBottom: 10,
 
@@ -148,5 +149,6 @@ export default {
     buttonlogout: {
         display: 'flex', alignItems: 'center', flexDirection: 'column'
     }
+};
 
-}
+export default sidebarStyles;

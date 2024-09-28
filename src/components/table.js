@@ -54,7 +54,7 @@ const CustomTable = ({
     }, 500);
 
     return () => clearTimeout(debounceSave);
-  }, [updatedRubros, monthlyTotals, rubrosTotals, inputValues]);
+  }, [currentView, updatedRubros, monthlyTotals, rubrosTotals, inputValues]);
 
   const handleInputChange = (value, monthIndex, rubroName, inputId) => {
     const numericValue = parseFloat(value) || 0;

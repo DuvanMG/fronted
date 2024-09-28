@@ -41,6 +41,14 @@ const Sidebar = () => {
     // window.location.href = path;
     router.push(path);
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem('first_name');
+    localStorage.removeItem('last_name');
+    localStorage.removeItem('token'); // Elimina cualquier otro token o dato de autenticación
+    router.push('/login'); // Redirige al usuario a la página de inicio de sesión
+  };
+
   useEffect(() => {
   }, [router.pathname]);
 
@@ -124,13 +132,13 @@ const Sidebar = () => {
               </List>
             </Collapse>
 
-            <ListItem button selected={selectedItem === 'Gráficas'} onClick={() => handleItemClick('Gráficas', '/graficas')} sx={router.pathname === "/uen/constructora" ? SidebarStyle.titleItemConstructora : router.pathname === '/uen/inmobiliaria' ? SidebarStyle.titleItemInmobiliaria : router.pathname === "/uen/unidad-apoyo" ? SidebarStyle.titleItemUA : SidebarStyle.titleItem }>
+            <ListItem button selected={selectedItem === 'Gráficas'} onClick={() => handleItemClick('Gráficas', '/graficas')} sx={router.pathname === "/uen/constructora" ? SidebarStyle.titleItemConstructora : router.pathname === '/uen/inmobiliaria' ? SidebarStyle.titleItemInmobiliaria : router.pathname === "/uen/unidad-apoyo" ? SidebarStyle.titleItemUA : SidebarStyle.titleItem}>
               <ListItemIcon sx={{ color: '#FFFFFF' }}>
                 <BarChartIcon />
               </ListItemIcon>
               <ListItemText primary="Gráficas" />
             </ListItem>
-            <ListItem button selected={selectedItem === 'Historial'} onClick={() => handleItemClick('Historial', '/historial')} sx={router.pathname === "/uen/constructora" ? SidebarStyle.titleItemConstructora : router.pathname === '/uen/inmobiliaria' ? SidebarStyle.titleItemInmobiliaria : router.pathname === "/uen/unidad-apoyo" ? SidebarStyle.titleItemUA : SidebarStyle.titleItem }>
+            <ListItem button selected={selectedItem === 'Historial'} onClick={() => handleItemClick('Historial', '/historial')} sx={router.pathname === "/uen/constructora" ? SidebarStyle.titleItemConstructora : router.pathname === '/uen/inmobiliaria' ? SidebarStyle.titleItemInmobiliaria : router.pathname === "/uen/unidad-apoyo" ? SidebarStyle.titleItemUA : SidebarStyle.titleItem}>
               <ListItemIcon sx={{ color: '#FFFFFF' }}>
                 <AllInbox />
               </ListItemIcon>
@@ -148,7 +156,7 @@ const Sidebar = () => {
               variant="text"
               startIcon={<LogoutIcon color='white' />}
               sx={{ color: 'white' }}
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={() => handleLogout()}
             />
           </div>
         </div>
