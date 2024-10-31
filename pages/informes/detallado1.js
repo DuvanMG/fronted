@@ -145,14 +145,16 @@ const Informe = () => {
 
           let rubroNombre = "";
           if (rubroIndex >= 0 && rubroIndex < updatedRubros.length) {
-            rubroNombre = updatedRubros[rubroIndex]?.nombre || "Rubro no encontrado";
+            rubroNombre =
+              updatedRubros[rubroIndex]?.nombre || "Rubro no encontrado";
             const rubro = updatedRubros[rubroIndex];
             const subrubros = rubro.subrubros || [];
 
             let subrubroNombre = "";
             let subrubroCodigo = "";
             if (subrubroIndex >= 0 && subrubroIndex < subrubros.length) {
-              subrubroNombre = subrubros[subrubroIndex]?.nombre || "Subrubro no encontrado";
+              subrubroNombre =
+                subrubros[subrubroIndex]?.nombre || "Subrubro no encontrado";
               subrubroCodigo = subrubros[subrubroIndex]?.codigo || "";
 
               if (!totalPorSubRubro[subrubroCodigo]) {
@@ -237,30 +239,41 @@ const Informe = () => {
     }
   }, [userId]);
 
-  function filterData(data, selectedUEN, selectedZona, selectedRubro, selectedSubrubro) {
+  function filterData(
+    data,
+    selectedUEN,
+    selectedZona,
+    selectedRubro,
+    selectedSubrubro
+  ) {
     return Object.entries(data)
       .map(([uen, data]) => {
         if (selectedUEN && uen !== selectedUEN) {
           return null;
         }
-  
+
         const filteredZones = Object.entries(data.zonas)
           .map(([zona, zonaData]) => {
             if (selectedZona && zona !== selectedZona) {
               return null;
             }
-  
+
             const filteredItems = zonaData.items.filter((item) => {
-              const rubroMatch = selectedRubro === "" || item.rubro === selectedRubro;
-              const subrubroMatch = selectedSubrubro === "" || item.subrubro === selectedSubrubro;
+              const rubroMatch =
+                selectedRubro === "" || item.rubro === selectedRubro;
+              const subrubroMatch =
+                selectedSubrubro === "" || item.subrubro === selectedSubrubro; // Verifica si el id del subrubro coincide
               return rubroMatch && subrubroMatch;
             });
-  
+
             const totalZonaPresupuesto = filteredItems.reduce(
               (acc, item) => acc + parseFloat(item.presupuestomes || 0),
               0
             );
-  
+            const filteredSubrubros =
+              rubros.find((rubro) => rubro.id === selectedRubro)?.subrubros ||
+              [];
+
             return {
               zona,
               totalZonaPresupuesto,
@@ -268,12 +281,12 @@ const Informe = () => {
             };
           })
           .filter((zonaData) => zonaData !== null && zonaData.items.length > 0);
-  
+
         const totalPresupuesto = filteredZones.reduce(
           (acc, zone) => acc + zone.totalZonaPresupuesto,
           0
         );
-  
+
         if (filteredZones.length > 0) {
           return {
             uen,
@@ -290,7 +303,6 @@ const Informe = () => {
       })
       .filter((item) => item !== null);
   }
-  
   useEffect(() => {
     const filteredData = filterData(
       presupuestos,
@@ -299,34 +311,38 @@ const Informe = () => {
       selectedRubro,
       selectedSubrubro
     );
+    console.log("Filtered Data:", filteredData); // Verificar que haya datos filtrados
     setFilteredData(filteredData);
-  }, [presupuestos, selectedUEN, selectedZona, selectedRubro, selectedSubrubro]);
-  
+  }, [
+    presupuestos,
+    selectedUEN,
+    selectedZona,
+    selectedRubro,
+    selectedSubrubro,
+  ]);
+
   const rubrosEnUso = useMemo(() => {
     const rubrosSet = new Set();
     const subrubrosSet = new Set();
-  
+
     filteredData.forEach(({ zonas }) => {
       Object.values(zonas).forEach(({ items }) => {
         items.forEach((item) => {
-          const rubroIndex = item.rubro;  // Aquí está usando el índice del rubro
-          if (rubros[rubroIndex]) {
-            rubrosSet.add(rubroIndex); // Agregar el índice del rubro al set
-            
-            const subrubroIndex = item.subrubro;  // Aquí también es el índice del subrubro
-            if (rubros[rubroIndex].subrubros[subrubroIndex]) {
-              subrubrosSet.add(subrubroIndex); // Agregar el índice del subrubro al set
-            }
-          }
+          rubrosSet.add(item.rubro); // Index or ID
+          subrubrosSet.add(item.subrubro); // Index or ID
         });
       });
     });
-  
+    console.log("Selected Rubro ID:", selectedRubro);
+    console.log(
+      "Available Subrubros:",
+      rubros.find((rubro) => rubro.id === selectedRubro)?.subrubros
+    );
     return {
       rubros: Array.from(rubrosSet),
       subrubros: Array.from(subrubrosSet),
     };
-  }, [filteredData, rubros]);  
+  }, [filteredData]);
 
   // Opciones de UEN y Zona
   const uenOptions = Object.keys(presupuestos);
@@ -336,63 +352,29 @@ const Informe = () => {
     )
   );
 
+
+  // Agrupar los datos por año
   const datosAgrupadosPorAño = useMemo(() => {
     const grouped = {};
-  
     filteredData.forEach(({ uen, totalPresupuesto, zonas }) => {
       if (zonas && Object.keys(zonas).length > 0) {
         Object.values(zonas).forEach((zonaData) => {
           if (zonaData.items && Array.isArray(zonaData.items)) {
             zonaData.items.forEach((item) => {
               if (item.fecha) {
-                const year = new Date(item.fecha).getFullYear(); // Extract the year
-  
-                // Initialize the year object if not already done
+                const year = new Date(item.fecha).getFullYear(); // Extraer el año del campo fecha
                 if (!grouped[year]) {
-                  grouped[year] = {};
+                  grouped[year] = [];
                 }
-  
-                // Initialize the UEN object if not already done
-                if (!grouped[year][uen]) {
-                  grouped[year][uen] = {
-                    totalPresupuesto,
-                    zonas: {}, // Initialize zonas as an object
-                  };
-                }
-  
-                // Access the zone name directly from the key
-                const zoneName = Object.keys(zonas).find(z => zonas[z] === zonaData) || 'Zona Desconocida';
-  
-                // Initialize zone if it doesn't exist
-                if (!grouped[year][uen].zonas[zoneName]) {
-                  grouped[year][uen].zonas[zoneName] = {
-                    totalZonaPresupuesto: 0, // Initialized to 0
-                    items: [], // Initialize items array
-                  };
-                }
-  
-                // Update totals and add items
-                const presupuestoMes = parseFloat(item.presupuestomes) || 0; // Ensure it's a number
-                grouped[year][uen].zonas[zoneName].totalZonaPresupuesto += presupuestoMes; // Summing up
-                grouped[year][uen].zonas[zoneName].items.push(item);
+                grouped[year].push({ uen, totalPresupuesto, zonas });
               }
             });
           }
         });
       }
     });
-  
-    // Convert grouped data back to a usable format
-    const result = {};
-    for (const year in grouped) {
-      result[year] = [];
-      for (const uen in grouped[year]) {
-        const { totalPresupuesto, zonas } = grouped[year][uen];
-        result[year].push({ uen, totalPresupuesto, zonas: zonas || {} });
-      }
-    }
-  
-    return result;
+    console.log("Datos agrupados por año:", grouped); // Revisa los datos agrupados por año
+    return grouped;
   }, [filteredData]);
 
   return (
@@ -416,7 +398,7 @@ const Informe = () => {
             <Typography>No hay datos para mostrar</Typography>
           ) : (
             Object.entries(datosAgrupadosPorAño).map(([year, yearData]) => (
-              <Accordion key={year} sx={{ marginBottom: "20px" }}>
+              <Accordion sx={{ marginBottom: "20px" }}>
                 <AccordionSummary
                   expandIcon={<ExpandMoreIcon />}
                   aria-controls="panel1a-content"
@@ -497,28 +479,29 @@ const Informe = () => {
                       </Select>
                     </FormControl>
 
-                    <FormControl variant="outlined" style={{ minWidth: 200 }}>
-                      <InputLabel>Filtrar por Subrubro</InputLabel>
-                      <Select
-                        value={selectedSubrubro}
-                        onChange={(e) => setSelectedSubrubro(e.target.value)}
-                        label="Filtrar por Subrubro"
-                        disabled={!selectedRubro}
-                      >
-                        <MenuItem value="">
-                          <em>Todos</em>
+                    {/* <FormControl variant="outlined" style={{ minWidth: 200 }}>
+                  <InputLabel>Filtrar por Subrubro</InputLabel>
+                  <Select
+                    value={selectedSubrubro}
+                    onChange={(e) => setSelectedSubrubro(e.target.value)}
+                    label="Filtrar por Subrubro"
+                    disabled={!selectedRubro}
+                  >
+                    <MenuItem value="">
+                      <em>Todos</em>
+                    </MenuItem>
+                    {rubros
+                      .find((rubro) => rubro.id === selectedRubro)
+                      ?.subrubros.filter((subrubro) =>
+                        rubrosEnUso.subrubros.includes(subrubro.id)
+                      ) // Filtrando por ID real
+                      .map((subrubro) => (
+                        <MenuItem key={subrubro.id} value={subrubro.id}>
+                          {subrubro.nombre} ({subrubro.codigo})
                         </MenuItem>
-                        {rubros[selectedRubro]?.subrubros
-                          .filter((_, subrubroIndex) =>
-                            rubrosEnUso.subrubros.includes(subrubroIndex) // Comparación por índice
-                          )
-                          .map((subrubro, subrubroIndex) => (
-                            <MenuItem key={subrubroIndex} value={subrubroIndex}>
-                              {subrubro.codigo} {subrubro.nombre}
-                            </MenuItem>
-                          ))}
-                      </Select>
-                    </FormControl>
+                      ))}
+                  </Select>
+                </FormControl> */}
                   </div>
 
                   <TableContainer component={Paper} style={{ padding: "20px" }}>
@@ -544,7 +527,7 @@ const Informe = () => {
                       </TableHead>
                       <TableBody>
                         {yearData.map(({ uen, totalPresupuesto, zonas }) => (
-                          <React.Fragment key={`${uen}-${totalPresupuesto}`}>
+                          <React.Fragment key={uen}>
                             {/* UEN Row */}
                             <TableRow>
                               <td
@@ -580,19 +563,17 @@ const Informe = () => {
                                 {/* Detalle de Rubros y Subrubros */}
                                 {Object.entries(
                                   zonaData.items.reduce((acc, item) => {
-                                  // Obtener rubro y subrubro asociados
-                                  const rubro = rubros[item.rubro];
-                                  const rubroName = rubro?.nombre || "Rubro no encontrado";
-                                  
-                                  // Verifica que el rubro contenga subrubros y accede al subrubro específico
-                                  const subrubroData = rubro?.subrubros?.[item.subrubro] || {};
-                                  
-                                  const subrubroCodigo = subrubroData?.codigo || "Subrubro no encontrado";
-                                  const subrubroNombre = subrubroData?.nombre || "Subrubro no encontrado";
-
-                                  // Crear la clave única para el subrubro (código y nombre)
-                                  const subrubroKey = `${subrubroCodigo} ${subrubroNombre}`;
-                                  const rubroKey = rubroName;
+                                    const rubroName =
+                                      rubros[item.rubro]?.nombre ||
+                                      "Rubro no encontrado";
+                                    const subrubroCodigo =
+                                      subrubros[item.subrubro]?.codigo ||
+                                      "Subrubro no encontrado";
+                                    const subrubroNombre =
+                                      subrubros[item.subrubro]?.nombre ||
+                                      "Subrubro no encontrado";
+                                    const subrubroKey = `${subrubroCodigo} ${subrubroNombre}`;
+                                    const rubroKey = rubroName;
 
                                     if (!acc[rubroKey]) {
                                       acc[rubroKey] = {
@@ -643,7 +624,8 @@ const Informe = () => {
                                     </TableRow>
 
                                     {/* Subrubro Rows */}
-                                    {Object.entries(rubroData.subrubros).map(([subrubroKey, subrubroData]) => (
+                                    {Object.entries(rubroData.subrubros).map(
+                                      ([subrubroKey, subrubroData]) => (
                                         <TableRow key={subrubroKey}>
                                           <td></td>
                                           <td></td>
@@ -750,76 +732,97 @@ const Informe = () => {
                 >
                   {Object.entries(data.zonas).map(([zona, zonaData]) => (
                     <Grid item xs={12} md={6} lg={3} key={zona}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '5px', boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.1)', marginBottom: '10px' }}>
-                        <Typography variant="h6" sx={{ margin: 0, fontWeight: 'bold' }}>
-                          {zona} {/* Nombre de la zona en negrilla */}
+                      <div>
+                        <Typography variant="h6">Zona: {zona}</Typography>
+                        <Typography variant="body2">
+                          Total Presupuesto Zona:{" "}
+                          {zonaData.totalZonaPresupuesto.toFixed(2)}
                         </Typography>
-                        <Typography variant="body2" sx={{ margin: 0, fontWeight: 'bold', fontSize: '16px' }}>
-                          {zonaData.totalZonaPresupuesto.toFixed(2)} {/* Total de presupuesto */}
-                        </Typography>
-                      </div>
-                      {/* Detalles de los rubros y subrubros */}
-                      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                        <tbody>
-                          {Object.entries(
-                            zonaData.items.reduce((acc, item) => {
-                              // Obtener rubro y subrubro asociados
-                              const rubro = rubros[item.rubro];
-                              const rubroName = rubro?.nombre || "Rubro no encontrado";
-                              const subrubroData = rubro?.subrubros?.[item.subrubro] || {};
-                              const subrubroCodigo = subrubroData?.codigo || "Subrubro no encontrado";
-                              const subrubroNombre = subrubroData?.nombre || "Subrubro no encontrado";
-                              const subrubroKey = `${subrubroCodigo} ${subrubroNombre}`;
-                              const rubroKey = rubroName;
+                        {/* Aquí podrías agregar más detalles si lo necesitas */}
+                        <table>
+                          <tbody>
+                            {Object.entries(
+                              zonaData.items.reduce((acc, item) => {
+                                const rubroName =
+                                  rubros[item.rubro]?.nombre ||
+                                  "Rubro no encontrado";
+                                const subrubroCodigo =
+                                  subrubros[item.subrubro]?.codigo ||
+                                  "SubRubro no encontrado";
+                                const subrubroNombre =
+                                  subrubros[item.subrubro]?.nombre ||
+                                  "SubRubro no encontrado";
+                                const subrubroKey = `${subrubroCodigo} ${subrubroNombre}`;
+                                const rubroKey = rubroName;
 
-                              if (!acc[rubroKey]) {
-                                acc[rubroKey] = {
-                                  rubroName: rubroName,
-                                  subrubros: {},
-                                  totalRubro: 0,
-                                };
-                              }
+                                if (!acc[rubroKey]) {
+                                  acc[rubroKey] = {
+                                    rubroName: rubroName,
+                                    subrubros: {},
+                                    totalRubro: 0,
+                                  };
+                                }
 
-                              if (!acc[rubroKey].subrubros[subrubroKey]) {
-                                acc[rubroKey].subrubros[subrubroKey] = {
-                                  items: [],
-                                  totalSubrubro: 0,
-                                };
-                              }
+                                if (!acc[rubroKey].subrubros[subrubroKey]) {
+                                  acc[rubroKey].subrubros[subrubroKey] = {
+                                    items: [],
+                                    totalSubrubro: 0,
+                                  };
+                                }
 
-                              acc[rubroKey].subrubros[subrubroKey].items.push(item);
-                              acc[rubroKey].subrubros[subrubroKey].totalSubrubro += parseFloat(item.presupuestomes || 0);
-                              acc[rubroKey].totalRubro += parseFloat(item.presupuestomes || 0);
+                                // Agregar ítem al subrubro
+                                acc[rubroKey].subrubros[subrubroKey].items.push(
+                                  item
+                                );
+                                acc[rubroKey].subrubros[
+                                  subrubroKey
+                                ].totalSubrubro += parseFloat(
+                                  item.presupuestomes || 0
+                                );
 
-                              return acc;
-                            }, {})
-                          ).map(([rubroKey, rubroData]) => (
-                            <React.Fragment key={rubroKey}>
-                              {/* Fila del rubro */}
-                              <tr style={{ backgroundColor: '#f0f0f0', boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)' }}>
-                                <td colSpan="2" style={{ padding: '10px', fontWeight: 'bold', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
-                                  <Typography variant="body1">{rubroData.rubroName}</Typography>
-                                </td>
-                                <td style={{ padding: '10px', textAlign: 'right', borderBottom: '1px solid #ddd' }}>
-                                  <Typography variant="body2">{rubroData.totalRubro.toFixed(2)}</Typography>
-                                </td>
-                              </tr>
+                                // Sumar al total del rubro
+                                acc[rubroKey].totalRubro += parseFloat(
+                                  item.presupuestomes || 0
+                                );
 
-                              {/* Filas de subrubros dentro del rubro */}
-                              {Object.entries(rubroData.subrubros).map(([subrubroKey, subrubroData]) =>
-                                isVisible && (
-                                  <tr key={subrubroKey} style={{ backgroundColor: '#fafafa', boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)' }}>
-                                    <td style={{ padding: '8px 10px', textAlign: 'left', borderBottom: '1px solid #eee' }}>
-                                      <Typography variant="body2">{subrubroKey}</Typography>
-                                    </td>
-                                    <td style={{ padding: '8px 10px', textAlign: 'right', borderBottom: '1px solid #eee' }}>
-                                      <Typography variant="body2">{subrubroData.totalSubrubro.toFixed(2)}</Typography>
-                                    </td>
-                                  </tr>
-                                )
-                              )}
-                            </React.Fragment>
-                          ))}
+                                return acc;
+                              }, {})
+                            ).map(([rubroKey, rubroData]) => (
+                              <React.Fragment key={rubroKey}>
+                                {/* Fila del rubro */}
+                                <tr>
+                                  <td colSpan="2">
+                                    <Typography>
+                                      {rubroData.rubroName}
+                                    </Typography>
+                                  </td>
+                                  <td>
+                                    <Typography>
+                                      {rubroData.totalRubro.toFixed(2)}
+                                    </Typography>
+                                  </td>
+                                </tr>
+
+                                {/* Filas de subrubros dentro del rubro */}
+                                {Object.entries(rubroData.subrubros).map(
+                                  ([subrubroKey, subrubroData]) =>
+                                    isVisible && (
+                                      <tr key={subrubroKey}>
+                                        <td>
+                                          <Typography>{subrubroKey}</Typography>
+                                        </td>
+                                        <td>
+                                          <Typography>
+                                            {subrubroData.totalSubrubro.toFixed(
+                                              2
+                                            )}
+                                          </Typography>
+                                        </td>
+                                      </tr>
+                                    )
+                                )}
+                              </React.Fragment>
+                            ))}
 
                             {/* Agrega la lógica para calcular utilidad bruta, operativa y antes de impuestos */}
                             {(() => {
@@ -849,20 +852,9 @@ const Informe = () => {
                                   return acc;
                                 }, 0);
 
-                                const costosDeVentaTotal =
-                                zonaData.items.reduce((acc, item) => {
-                                  const rubroName =
-                                    rubros[item.rubro]?.nombre ||
-                                    "Rubro no encontrado";
-                                  if (rubroName === "COSTOS DE VENTA") {
-                                    return (
-                                      acc + parseFloat(item.presupuestomes || 0)
-                                    );
-                                  }
-                                  return acc;
-                                }, 0);
-
-                              const utilidadBruta = ingresosOperacionalesTotal - costosDeVentaTotal - costosIndirectosTotal;
+                              const utilidadBruta =
+                                ingresosOperacionalesTotal -
+                                costosIndirectosTotal;
 
                               const gastosOperacionalesAdministrativosTotal =
                                 zonaData.items.reduce((acc, item) => {
@@ -975,6 +967,7 @@ const Informe = () => {
                             })()}
                           </tbody>
                         </table>
+                      </div>
                     </Grid>
                   ))}
                 </Grid>

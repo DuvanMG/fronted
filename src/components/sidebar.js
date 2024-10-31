@@ -9,8 +9,12 @@ import AvatarUser from './avatarUser';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
+import { openDB } from "idb";
 
 const Sidebar = () => {
+  // Define constants for keys at the top
+  const SELECTED_PRESUPUESTO_KEY = "constructora_selectedPresupuesto";
+  const RUBROS_DATA_KEY = "constructora_rubrosData";
   const [openUEN, setOpenUEN] = useState(false);
   const [openInformes, setOpenInformes] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -41,12 +45,61 @@ const Sidebar = () => {
     // window.location.href = path;
     router.push(path);
   };
+  const initDB = async () => {
+    const currentDB = await openDB("PresupuestoDB");
+    if (currentDB.objectStoreNames.contains("rubrosData")) return currentDB;
+    currentDB.close();
+    return openDB("PresupuestoDB", currentDB.version + 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains("rubrosData")) db.createObjectStore("rubrosData");
+      },
+    });
+  };
+  const deleteDataFromDB = async (store, key) => {
+    try {
+      const db = await initDB();
+      await db.delete(store, key);
+    } catch (error) {
+      console.error("Error deleting from IndexedDB:", error);
+    }
+  };
+  const getDataFromDB = async (store, key) => {
+    try {
+      const db = await initDB();
+      return await db.get(store, key);
+    } catch (error) {
+      console.error("Error accessing IndexedDB:", error);
+    }
+  };
 
-  const handleLogout = () => {
-    localStorage.removeItem('first_name');
-    localStorage.removeItem('last_name');
-    localStorage.removeItem('token'); // Elimina cualquier otro token o dato de autenticación
-    router.push('/login'); // Redirige al usuario a la página de inicio de sesión
+  const deleteDatabase = async () => {
+    const dbName = "PresupuestoDB"; // Nombre de tu base de datos
+    const request = indexedDB.deleteDatabase(dbName);
+    request.onsuccess = () => {
+    
+    };
+
+    request.onerror = (event) => {
+      console.error(`Error al eliminar la base de datos ${dbName}:`, event);
+    };
+
+    request.onblocked = () => {
+      console.warn(`La base de datos ${dbName} está bloqueada y no se puede eliminar.`);
+    };
+  }
+
+  const handleLogout = async () => {
+    try {
+
+      await deleteDatabase(); // Call the function to delete all data
+
+      // Clear localStorage
+      localStorage.clear();
+      router.push('/login');
+      // Optionally, redirect the user or perform additional cleanup here
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
   };
 
   useEffect(() => {

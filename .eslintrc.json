@@ -3,8 +3,9 @@
   "rules": {
     "react/display-name": "off",
     "react/no-children-prop": "off",
-    "react-hooks/exhaustive-deps": "warn",
+    "react-hooks/exhaustive-deps": "off",
     "no-console": "off",
-    "react/react-in-jsx-scope": "off"
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-key": "off"
   }
 }

@@ -1,46 +1,29 @@
-import { Accordion, AccordionSummary, AccordionDetails, Typography } from '@mui/material'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { Table, TableBody, TableCell, TableHead, TableRow, Paper } from '@mui/material';
 
-const ReportTable = ({
-    updatedpresupuestos
-}) => {
-
-    return (
-        <Accordion sx={{ width: "100%" }}>
-            <AccordionSummary
-                expandIcon={<ExpandMoreIcon sx={{ color: "white" }} />}
-                aria-controls="panel1-content"
-                id="panel1-header"
-                sx={{
-                    background: "rgb(253, 128, 2)",
-                    color: "white",
-                    borderRadius: '6px 6px 0px 0px'
-                }}>
-                <Typography> Constructora </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-                <table border="1">
-                    <thead>
-                        <tr>
-                            <th>Detalle</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {updatedpresupuestos.map((rubro) => (
-                            <React.Fragment key={rubro.id}>
-                                {rubro.subrubros.map((subrubro) => (
-                                    <tr key={subrubro.id}>
-                                        <td>{`${subrubro.codigo}  ${subrubro.nombre}`}</td>
-                                    </tr>
-                                ))}
-                            </React.Fragment>
-                        ))}
-                    </tbody>
-                </table>
-            </AccordionDetails>
-        </Accordion>
-    );
+const ReportTable = ({ columns, data }) => {
+  return (
+    <Paper>
+      <Table>
+        <TableHead>
+          <TableRow>
+            {columns.map((col, index) => (
+              <TableCell key={index}>{col.label}</TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, rowIndex) => (
+            <TableRow key={rowIndex}>
+              {columns.map((col, colIndex) => (
+                <TableCell key={colIndex}>{row[col.field]}</TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Paper>
+  );
 };
 
 export default ReportTable;
