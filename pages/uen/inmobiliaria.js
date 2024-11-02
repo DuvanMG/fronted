@@ -20,22 +20,14 @@ const Inmobiliaria = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState(null);
 
-//   useEffect(() => {
-//     if (typeof window !== "undefined") {
-//       const storedToken = localStorage.getItem("token");
-//       if (storedToken) {
-//         setToken(storedToken);
-//       } else {
-//         console.error("Token not found in localStorage.");
-//       }
-//     }
-//   }, []);
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    if (storedToken) {
-      setToken(storedToken);
-    } else {
-      console.error("Token not found in localStorage.");
+    if (typeof window !== "undefined") {
+      const storedToken = localStorage.getItem("token");
+      if (storedToken) {
+        setToken(storedToken);
+      } else {
+        console.error("Token not found in localStorage.");
+      }
     }
   }, []);
 

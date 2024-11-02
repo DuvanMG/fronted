@@ -4,7 +4,6 @@ import CustomTable from "@/components/table";
 import Sidebar from "@/components/sidebar";
 import withAuth from "../api/auth/withAuth";
 import { openDB } from "idb";
-import LoadingModal from "@/components/loading";
 
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Octe", "Nov", "Dic"];
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";

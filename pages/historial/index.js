@@ -26,6 +26,9 @@ const Storage = () => {
         if (!db.objectStoreNames.contains("selectedPresupuesto")) {
           db.createObjectStore("selectedPresupuesto");
         }
+        if (!db.objectStoreNames.contains("rubrosData")) {
+          db.createObjectStore("rubrosData");
+        }
       },
     });
     return dbInstance;
@@ -53,7 +56,6 @@ const Storage = () => {
         inputs: {},
       }, `${currentView}_rubrosData`);
       
-      console.log("Datos vaciados correctamente en IndexedDB");
     } catch (error) {
       console.error("Error al vaciar datos en IndexedDB:", error);
     }
@@ -121,14 +123,28 @@ const Storage = () => {
       fetchData();
     }
   }, [userId]);
+  
+  const uniquePresupuestos = Array.from(
+    new Map(
+      updatedPresupuestos.map((presupuesto) => {
+        const year = new Date(presupuesto.fecha).getFullYear();
+        const zone = presupuesto.zona || "Unknown Zone"; // Assuming zone data exists
+        const uniqueKey = `${presupuesto.uen.nombre}-${presupuesto.usuario.id}-${zone}-${year}`;
+        return [uniqueKey, presupuesto];
+      })
+    ).values()
+  );
 
   const handleCardClick = async (nombre, usuarioId, fecha) => {
-    const filteredPresupuestos = updatedPresupuestos.filter(
-      (item) =>
+    const targetYear = new Date(fecha).getFullYear();
+    const filteredPresupuestos = updatedPresupuestos.filter((item) => {
+      const itemYear = new Date(item.fecha).getFullYear();
+      return (
         item.uen.nombre.toLowerCase() === nombre.toLowerCase() &&
         item.usuario.id === usuarioId &&
-        item.fecha === fecha
-    );
+        itemYear === targetYear 
+      );
+    });
 
     if (filteredPresupuestos.length > 0) {
       const newInputValues = {};
@@ -157,19 +173,10 @@ const Storage = () => {
     }
   };
 
-  const uniquePresupuestos = Array.from(
-    new Map(
-      updatedPresupuestos.map((presupuesto) => {
-        const uniqueKey = `${presupuesto.uen.nombre}-${presupuesto.usuario.id}-${presupuesto.fecha}`;
-        return [uniqueKey, presupuesto];
-      })
-    ).values()
-  );
-
-  if (isLoading) return <LoadingModal open={isLoading} />
-
+  
   return (
     <>
+    if (isLoading) return <LoadingModal open={isLoading} />
       <div style={{ display: "flex", flexDirection: "row", height: "100vh" }}>
         <Sidebar />
         <div style={{ display: "flex", flexDirection: "column", width: "80%" }}>
@@ -179,12 +186,12 @@ const Storage = () => {
                 key={index}
                 area={`${presupuesto.uen.nombre || "N/A"}`}
                 user={`${presupuesto.usuario.first_name} ${presupuesto.usuario.last_name}`}
-                date={`${presupuesto.fecha || "N/A"}`}
+                date={`${new Date(presupuesto.fecha).getFullYear() || "N/A"}`}
                 click={() =>
                   handleCardClick(
                     presupuesto.uen.nombre,
                     presupuesto.usuario.id,
-                    presupuesto.fecha
+                    presupuesto.fecha,
                   )
                 }
               />

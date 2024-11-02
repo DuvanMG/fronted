@@ -19,14 +19,15 @@ const Constructora = () => {
   const [CentroCostoid, setCentroCostoid] = useState();
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState(null);
-  
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    if (storedToken) {
-      setToken(storedToken);
-    } else {
-      console.error("Token not found in localStorage.");
+    if (typeof window !== "undefined") {
+      const storedToken = localStorage.getItem("token");
+      if (storedToken) {
+        setToken(storedToken);
+      } else {
+        console.error("Token not found in localStorage.");
+      }
     }
   }, []);
 
@@ -44,14 +45,9 @@ const Constructora = () => {
   const getDataFromDB = async (store, key) => {
     try {
       const db = await initDB();
-      const data = await db.get(store, key);
-  
-      if (data === undefined) {
-        return null; 
-      }
-      return data;
+      return await db.get(store, key);
     } catch (error) {
-      return null;
+      console.error("Error accessing IndexedDB:", error);
     }
   };
 
@@ -108,7 +104,7 @@ const Constructora = () => {
       try {
         const savedPresupuesto = await getDataFromDB("selectedPresupuesto", "constructora_selectedPresupuesto");
         const savedData = await getDataFromDB("rubrosData", "constructora_rubrosData");
-  
+        
         if (savedPresupuesto?.updatedRubros?.length > 0) {
           setUpdatedRubros(savedPresupuesto.updatedRubros);
           setMonthlyTotals(savedPresupuesto.monthlyTotals || Array(12).fill(0));
@@ -130,7 +126,7 @@ const Constructora = () => {
             inputs: {},
           });
         }
-  
+        
         if (!userId) {
           const centroCostosData = await fetchCentroCostosData();
           const constructoraCentroCostos = centroCostosData.results.filter(item => item.uen.nombre === "Constructora");
@@ -145,7 +141,7 @@ const Constructora = () => {
     };
   
     if (token) fetchData();
-  }, [userId, token]);
+  }, [token, userId]);
 
   const memoizedConstructoraCentroCostos = useMemo(() => updatedCentroCostos, [updatedCentroCostos]);
 

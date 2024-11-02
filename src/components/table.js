@@ -5,7 +5,20 @@ import AddIcon from "@mui/icons-material/Add";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import {Accordion,Autocomplete,SpeedDial,Button,Dialog,DialogTitle,AccordionSummary,DialogActions,DialogContent,TextField,Typography,useMediaQuery,SpeedDialAction,
+import {
+  Accordion,
+  Autocomplete,
+  SpeedDial,
+  Button,
+  Dialog,
+  DialogTitle,
+  AccordionSummary,
+  DialogActions,
+  DialogContent,
+  TextField,
+  Typography,
+  useMediaQuery,
+  SpeedDialAction,
 } from "@mui/material";
 import HoverButton from "./hoverButton";
 import styles from "../styles/table";
@@ -13,10 +26,27 @@ import { getCookie } from "../utils/cookieUtils";
 import { Snackbar, Alert } from "@mui/material";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/router";
-import { openDB } from 'idb';
+import { openDB } from "idb";
 import LoadingModal from "@/components/loading";
 
-const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputValues,updatedRubros,setUpdatedRubros,uen,setMonthlyTotals,monthlyTotals,updatedcentroCostos,userId,CentroCostoid,setCentroCostoid,initDB,isLoading,setIsLoading
+const CustomTable = ({
+  MONTHS,
+  rubrosTotals,
+  setRubrosTotals,
+  setInputValues,
+  inputValues,
+  updatedRubros,
+  setUpdatedRubros,
+  uen,
+  setMonthlyTotals,
+  monthlyTotals,
+  updatedcentroCostos,
+  userId,
+  CentroCostoid,
+  setCentroCostoid,
+  initDB,
+  isLoading,
+  setIsLoading,
 }) => {
   const [open, setOpen] = useState(false);
   const [selectedRubro, setSelectedRubro] = useState("");
@@ -42,14 +72,14 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
 
   const saveDataToDB = async (key, data) => {
     const db = await initDB();
-    await db.put('rubrosData', data, key);
+    await db.put("rubrosData", data, key);
   };
-  
+
   const getDataFromDB = async (key) => {
     const db = await initDB();
-    return await db.get('rubrosData', key);
+    return await db.get("rubrosData", key);
   };
-  
+
   const deleteDataFromDB = async (store, key) => {
     try {
       const db = await initDB();
@@ -58,7 +88,7 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
       console.error("Error deleting from IndexedDB:", error);
     }
   };
-  
+
   const handleMouseLeave = () => {
     setOpacity(0.5);
   };
@@ -79,18 +109,38 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
     const numericValue = parseFloat(value) || 0;
     const previousValue = inputValues[inputId]?.value || 0;
     const difference = numericValue - previousValue;
-    await deleteDataFromDB("selectedPresupuesto", SELECTED_PRESUPUESTO_KEY);
-    const centroCostoidValue = CentroCostoid || (await getDataFromDB(`${currentView}_CentroCostoid`));
 
-    setInputValues ((prevInputValues) => ({
-      ...prevInputValues,
-      [inputId]: {
-        value: numericValue,
-        centroCostoid: centroCostoidValue,
-        id: prevInputValues[inputId]?.id || parseInt(inputId.split("-")[3]),
-      },
-    }));
+    // Elimina cualquier referencia a IndexedDB y usa solo localStorage
+    const centroCostoidValue =
+      CentroCostoid ||
+      JSON.parse(localStorage.getItem(`${currentView}_CentroCostoid`));
 
+    // Actualiza el estado de los valores de entrada
+    setInputValues((prevInputValues) => {
+      const updatedInputValues = {
+        ...prevInputValues,
+        [inputId]: {
+          value: numericValue,
+          centroCostoid: centroCostoidValue,
+          id: prevInputValues[inputId]?.id || parseInt(inputId.split("-")[3]),
+        },
+      };
+
+      // Guarda en localStorage de forma asíncrona
+      setTimeout(() => {
+        try {
+          localStorage.setItem(
+            "inputValuesKey",
+            JSON.stringify(updatedInputValues)
+          );
+          console.log("Datos guardados en localStorage");
+        } catch (error) {
+          console.error("Error al guardar en localStorage:", error);
+        }
+      }, 0); // Simula asincronía para mejorar el rendimiento de la UI
+
+      return updatedInputValues;
+    });
     // Cargando monthly and rubro totales
     setMonthlyTotals((prevTotals) => {
       const newTotals = [...prevTotals];
@@ -111,29 +161,39 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
 
   const handleAddItem = () => {
     // Check for required values
-    if (selectedRubroIndex === null || selectedSubrubroIndex === null || selectedAuxiliarIndex === null || !CentroCostoid || !newItem) {
-      setSnackbarMessage("Faltan valores requeridos: Rubro, Subrubro, Auxiliar, Centro de Costo o Nuevo Item");
+    if (
+      selectedRubroIndex === null ||
+      selectedSubrubroIndex === null ||
+      selectedAuxiliarIndex === null ||
+      !CentroCostoid ||
+      !newItem
+    ) {
+      setSnackbarMessage(
+        "Faltan valores requeridos: Rubro, Subrubro, Auxiliar, Centro de Costo o Nuevo Item"
+      );
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
       return;
     }
-  
+
     const rubro = updatedRubros[selectedRubroIndex];
     const subrubro = rubro.subrubros[selectedSubrubroIndex];
     const auxiliar = subrubro.auxiliares[selectedAuxiliarIndex];
-  
+
     if (auxiliar) {
       // Add new item to the list of items
       const itemsArray = auxiliar.items || [];
       itemsArray.push({ nombre: newItem, centroCostoid: CentroCostoid });
       auxiliar.items = itemsArray;
-  
+
       const updatedRubrosCopy = [...updatedRubros];
-      updatedRubrosCopy[selectedRubroIndex].subrubros[selectedSubrubroIndex].auxiliares[selectedAuxiliarIndex] = auxiliar;
-  
+      updatedRubrosCopy[selectedRubroIndex].subrubros[
+        selectedSubrubroIndex
+      ].auxiliares[selectedAuxiliarIndex] = auxiliar;
+
       // Clear fields and close dialog
       setUpdatedRubros(updatedRubrosCopy);
-      setNewItem('');
+      setNewItem("");
       setOpen(false);
     } else {
       console.error("Auxiliar no encontrado");
@@ -141,8 +201,8 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
     }
-  };  
-  
+  };
+
   const handleRemoveItem = async (
     rubroIndex,
     subrubroIndex,
@@ -150,7 +210,7 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
     itemIndex
   ) => {
     const updatedRubrosCopy = [...updatedRubros];
-    const data = Object.keys(inputValues).map(inputId => {
+    const data = Object.keys(inputValues).map((inputId) => {
       const inputValue1 = inputValues[inputId];
       return {
         id: parseInt(inputValue1.id),
@@ -158,40 +218,49 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
     });
 
     // Get the auxiliar and remove the item
-    const auxiliar = updatedRubrosCopy[rubroIndex].subrubros[subrubroIndex].auxiliares[auxiliarIndex];
+    const auxiliar =
+      updatedRubrosCopy[rubroIndex].subrubros[subrubroIndex].auxiliares[
+        auxiliarIndex
+      ];
     const itemValue = auxiliar.items[itemIndex];
-  
+
     if (itemValue) {
       auxiliar.items.splice(itemIndex, 1); // Remove the item
-  
+
       const updatedInputValues = { ...inputValues };
       const newMonthlyTotals = [...monthlyTotals];
       const newRubrosTotals = { ...rubrosTotals };
-  
+
       // Update inputValues, monthly totals, and rubros totals
       MONTHS.forEach((_, monthIndex) => {
         const inputId = `outlined-basic-${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-${itemIndex}-${monthIndex}`;
         const value = parseFloat(updatedInputValues[inputId]?.value) || 0;
-  
+
         newMonthlyTotals[monthIndex] -= value;
-  
+
         if (newRubrosTotals[updatedRubrosCopy[rubroIndex].nombre]) {
-          newRubrosTotals[updatedRubrosCopy[rubroIndex].nombre][monthIndex] -= value;
+          newRubrosTotals[updatedRubrosCopy[rubroIndex].nombre][monthIndex] -=
+            value;
         }
-  
+
         // Clean up inputValues if the item is deleted
         if (inputId in updatedInputValues) {
           delete updatedInputValues[inputId];
         }
       });
-  
+
       // Check if all monthly totals for the rubro are zero and delete if so
-      if (newRubrosTotals[updatedRubrosCopy[rubroIndex].nombre]?.every(val => val === 0)) {
+      if (
+        newRubrosTotals[updatedRubrosCopy[rubroIndex].nombre]?.every(
+          (val) => val === 0
+        )
+      ) {
         delete newRubrosTotals[updatedRubrosCopy[rubroIndex].nombre];
       }
-  
+
       // Send API request to delete the item
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const csrftoken = getCookie("csrftoken");
       const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/presupuestos/batch-delete/`, {
@@ -203,15 +272,15 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
         },
         body: JSON.stringify(data), // Sending just the deleted item's ID
       });
-  
+
       await deleteDataFromDB("selectedPresupuesto", SELECTED_PRESUPUESTO_KEY);
       await deleteDataFromDB("rubrosData", RUBROS_DATA_KEY);
-  
+
       if (response.ok) {
         setSnackbarMessage(`Presupuesto eliminado exitosamente.`);
         setSnackbarSeverity("success");
         setSnackbarOpen(true);
-  
+
         setUpdatedRubros(updatedRubrosCopy);
         setInputValues(updatedInputValues);
         setMonthlyTotals(newMonthlyTotals);
@@ -222,7 +291,7 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
     } else {
       console.error("Item no encontrado");
     }
-  };  
+  };
 
   const calculateAnnualTotal = (totals) => {
     return totals.reduce((acc, curr) => acc + parseInt(curr || 0, 10), 0);
@@ -238,92 +307,111 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
 
     // Encabezados de la hoja de Excel
     const headers = [
-        "IDs","Rubros","Subrubros","Auxiliares","Centro De Costos","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
+      "IDs",
+      "Rubros",
+      "Subrubros",
+      "Auxiliares",
+      "Centro De Costos",
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
     ];
     data.push(headers);
 
     // Recorrer rubros, subrubros y auxiliares
     updatedRubros.forEach((rubro) => {
-        if (Array.isArray(rubro.subrubros)) {
-            rubro.subrubros.forEach((subrubro) => {
-                if (Array.isArray(subrubro.auxiliares)) {
-                    subrubro.auxiliares.forEach((auxiliar) => {
-                        if (Array.isArray(auxiliar.items)) {
-                            auxiliar.items.forEach((item, itemIndex) => {
-                                
-                                // Crear un objeto para almacenar los IDs por mes
-                                const idsByMonth = {};
+      if (Array.isArray(rubro.subrubros)) {
+        rubro.subrubros.forEach((subrubro) => {
+          if (Array.isArray(subrubro.auxiliares)) {
+            subrubro.auxiliares.forEach((auxiliar) => {
+              if (Array.isArray(auxiliar.items)) {
+                auxiliar.items.forEach((item, itemIndex) => {
+                  // Crear un objeto para almacenar los IDs por mes
+                  const idsByMonth = {};
 
-                                // Recopilar IDs para cada mes
-                                MONTHS.forEach((_, monthIndex) => {
-                                    const inputId = `outlined-basic-${updatedRubros.indexOf(
-                                        rubro
-                                    )}-${rubro.subrubros.indexOf(
-                                        subrubro
-                                    )}-${subrubro.auxiliares.indexOf(
-                                        auxiliar
-                                    )}-${itemIndex}-${monthIndex}`;
+                  // Recopilar IDs para cada mes
+                  MONTHS.forEach((_, monthIndex) => {
+                    const inputId = `outlined-basic-${updatedRubros.indexOf(
+                      rubro
+                    )}-${rubro.subrubros.indexOf(
+                      subrubro
+                    )}-${subrubro.auxiliares.indexOf(
+                      auxiliar
+                    )}-${itemIndex}-${monthIndex}`;
 
-                                    const idValue = inputValues[inputId]?.id;
-                                    // Almacenar el ID en el array correspondiente al mes
-                                    if (idValue) {
-                                        // Si no existe el mes en el objeto, inicializarlo
-                                        if (!idsByMonth[MONTHS[monthIndex]]) {
-                                            idsByMonth[MONTHS[monthIndex]] = [];
-                                        }
-                                        idsByMonth[MONTHS[monthIndex]].push(idValue);
-                                    } else {
-                                        // Si no hay ID, inicializar como un espacio vacío
-                                        if (!idsByMonth[MONTHS[monthIndex]]) {
-                                            idsByMonth[MONTHS[monthIndex]] = [' '];
-                                        }
-                                    }
-                                });
+                    const idValue = inputValues[inputId]?.id;
+                    // Almacenar el ID en el array correspondiente al mes
+                    if (idValue) {
+                      // Si no existe el mes en el objeto, inicializarlo
+                      if (!idsByMonth[MONTHS[monthIndex]]) {
+                        idsByMonth[MONTHS[monthIndex]] = [];
+                      }
+                      idsByMonth[MONTHS[monthIndex]].push(idValue);
+                    } else {
+                      // Si no hay ID, inicializar como un espacio vacío
+                      if (!idsByMonth[MONTHS[monthIndex]]) {
+                        idsByMonth[MONTHS[monthIndex]] = [" "];
+                      }
+                    }
+                  });
 
-                                // Crear un string que representa los IDs agrupados por mes
-                                const idsString = MONTHS.map(month => {
-                                    const ids = idsByMonth[month];
-                                    return ids ? ids.join("") : '';
-                                }).join("'");
+                  // Crear un string que representa los IDs agrupados por mes
+                  const idsString = MONTHS.map((month) => {
+                    const ids = idsByMonth[month];
+                    return ids ? ids.join("") : "";
+                  }).join("'");
 
-                                // Crear fila de datos con los IDs agrupados por mes
-                                const row = [
-                                    idsString, // Mostrar todos los IDs agrupados por mes
-                                    `${rubro.codigo} ${rubro.nombre}`,
-                                    `${subrubro.codigo} ${subrubro.nombre}`,
-                                    `${auxiliar.codigo} ${auxiliar.nombre}`,
-                                    item.nombre.trim().replace(/\s+/g,' '),
-                                ];
+                  // Crear fila de datos con los IDs agrupados por mes
+                  const row = [
+                    idsString, // Mostrar todos los IDs agrupados por mes
+                    `${rubro.codigo} ${rubro.nombre}`,
+                    `${subrubro.codigo} ${subrubro.nombre}`,
+                    `${auxiliar.codigo} ${auxiliar.nombre}`,
+                    item.nombre.trim().replace(/\s+/g, " "),
+                  ];
 
-                                // Agregar valores mensuales a la fila
-                                MONTHS.forEach((_, monthIndex) => {
-                                    const inputId = `outlined-basic-${updatedRubros.indexOf(
-                                        rubro
-                                    )}-${rubro.subrubros.indexOf(
-                                        subrubro
-                                    )}-${subrubro.auxiliares.indexOf(
-                                        auxiliar
-                                    )}-${itemIndex}-${monthIndex}`;
-                                    const inputValue = inputValues[inputId]?.value;
+                  // Agregar valores mensuales a la fila
+                  MONTHS.forEach((_, monthIndex) => {
+                    const inputId = `outlined-basic-${updatedRubros.indexOf(
+                      rubro
+                    )}-${rubro.subrubros.indexOf(
+                      subrubro
+                    )}-${subrubro.auxiliares.indexOf(
+                      auxiliar
+                    )}-${itemIndex}-${monthIndex}`;
+                    const inputValue = inputValues[inputId]?.value;
 
-                                    // Asegurarse de que inputValue sea un número o 0
-                                    const value = inputValue !== undefined ? parseFloat(inputValue) : 0; 
-                                    row.push(value);
-                                });
+                    // Asegurarse de que inputValue sea un número o 0
+                    const value =
+                      inputValue !== undefined ? parseFloat(inputValue) : 0;
+                    row.push(value);
+                  });
 
-                                data.push(row);
-                            });
-                        }
-                    });
-                }
+                  data.push(row);
+                });
+              }
             });
-        }
+          }
+        });
+      }
     });
 
     // Crear hoja y ajustar ancho de columnas
     const ws = XLSX.utils.aoa_to_sheet(data);
     const maxLengths = headers.map((header, i) =>
-        Math.max(header.length, ...data.map((row) => (row[i] ? row[i].toString().length : 0)))
+      Math.max(
+        header.length,
+        ...data.map((row) => (row[i] ? row[i].toString().length : 0))
+      )
     );
     ws["!cols"] = maxLengths.map((length) => ({ wch: length + 2 }));
 
@@ -363,90 +451,109 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
     const newRubrosTotals = { ...rubrosTotals };
 
     for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        const ids = row[0] ? String(row[0]).trim().split("'") : []; // Separar los valores por comillas simples
+      const row = data[i];
+      const ids = row[0] ? String(row[0]).trim().split("'") : []; // Separar los valores por comillas simples
 
-        const rubroData = row[1] ? String(row[1]).trim().split(" ") : [];
-        const rubroCodigo = rubroData[0] ? String(rubroData[0]).trim() : "";
-        const rubroName = rubroData.slice(1).join(" ").trim();
+      const rubroData = row[1] ? String(row[1]).trim().split(" ") : [];
+      const rubroCodigo = rubroData[0] ? String(rubroData[0]).trim() : "";
+      const rubroName = rubroData.slice(1).join(" ").trim();
 
-        const subrubroData = row[2] ? String(row[2]).trim().split(" ") : [];
-        const subrubroCodigo = subrubroData[0] ? String(subrubroData[0]).trim() : "";
-        const subrubroName = subrubroData.slice(1).join(" ").trim();
+      const subrubroData = row[2] ? String(row[2]).trim().split(" ") : [];
+      const subrubroCodigo = subrubroData[0]
+        ? String(subrubroData[0]).trim()
+        : "";
+      const subrubroName = subrubroData.slice(1).join(" ").trim();
 
-        const auxiliarData = row[3] ? String(row[3]).trim().split(" ") : [];
-        const auxiliarCodigo = auxiliarData[0] ? String(auxiliarData[0]).trim() : "";
-        const auxiliarName = auxiliarData.slice(1).join(" ").trim();
+      const auxiliarData = row[3] ? String(row[3]).trim().split(" ") : [];
+      const auxiliarCodigo = auxiliarData[0]
+        ? String(auxiliarData[0]).trim()
+        : "";
+      const auxiliarName = auxiliarData.slice(1).join(" ").trim();
 
-        const itemName = row[4] ? String(row[4]).trim() : "";
-        const itemCodigo = itemName.split(" ")[0] || "";
+      const itemName = row[4] ? String(row[4]).trim() : "";
+      const itemCodigo = itemName.split(" ")[0] || "";
 
-        const monthlyValues = row.slice(5, 17);
+      const monthlyValues = row.slice(5, 17);
 
-        const allValuesAreZero = monthlyValues.every(
-            (monthValue) => monthValue === 0 || monthValue === null
-        );
+      const allValuesAreZero = monthlyValues.every(
+        (monthValue) => monthValue === 0 || monthValue === null
+      );
 
-        if (allValuesAreZero) continue;
+      if (allValuesAreZero) continue;
 
-        // Verificar si el rubro existe
-        // Buscar si el rubro ya existe en updatedRubros
-        let rubro = updatedRubros.find(s => s.codigo.toString() === rubroCodigo && s.nombre === rubroName);
-        // Si no existe, crea uno nuevo
-        if (!rubro) {
-          rubro = { codigo: rubroCodigo, nombre: rubroName, subrubros: [] };
-          updatedRubros.push(rubro);
+      // Verificar si el rubro existe
+      // Buscar si el rubro ya existe en updatedRubros
+      let rubro = updatedRubros.find(
+        (s) => s.codigo.toString() === rubroCodigo && s.nombre === rubroName
+      );
+      // Si no existe, crea uno nuevo
+      if (!rubro) {
+        rubro = { codigo: rubroCodigo, nombre: rubroName, subrubros: [] };
+        updatedRubros.push(rubro);
+      }
+
+      // Verificar si el subrubro existe
+      let subrubro = rubro.subrubros.find(
+        (s) =>
+          s.codigo.toString() === subrubroCodigo && s.nombre === subrubroName
+      );
+
+      // Si no existe, crea uno nuevo
+      if (!subrubro) {
+        subrubro = {
+          codigo: subrubroCodigo,
+          nombre: subrubroName,
+          auxiliares: [],
+        };
+        rubro.subrubros.push(subrubro);
+      }
+
+      let auxiliar = subrubro.auxiliares.find(
+        (s) => s.codigo.toString() === auxiliarCodigo
+      );
+
+      if (!auxiliar) {
+        auxiliar = { codigo: auxiliarCodigo, nombre: auxiliarName, items: [] };
+        rubro.subrubros.push(auxiliar);
+      }
+
+      auxiliar.items = auxiliar.items || [];
+      const item = { nombre: itemName };
+      // Añadir ítems al auxiliar
+      monthlyValues.forEach((monthValue, monthIndex) => {
+        const numericValue = monthValue || 0;
+
+        if (numericValue !== 0) {
+          const inputId = `outlined-basic-${updatedRubros.indexOf(
+            rubro
+          )}-${rubro.subrubros.indexOf(subrubro)}-${subrubro.auxiliares.indexOf(
+            auxiliar
+          )}-${auxiliar.items.length}-${monthIndex}`;
+
+          // Organizar los valores y el id a la que pertenece
+          newInputValues[inputId] = {
+            value: numericValue,
+            centroCostoid: itemCodigo,
+            id: ids[monthIndex] ? parseInt(ids[monthIndex]) : null, // Extrae el id del mes actual si existe
+          };
+
+          // Actualizar los totales del rubro
+          if (!newRubrosTotals[rubroName]) {
+            newRubrosTotals[rubroName] = Array(12).fill(0);
+          }
+          newRubrosTotals[rubroName][monthIndex] += numericValue;
+
+          // Actualizar los totales mensuales generales
+          newMonthlyTotals[monthIndex] += numericValue;
+
+          // Asignar el valor mensual al ítem
+          item[inputId] = numericValue;
         }
-
-        // Verificar si el subrubro existe
-        let subrubro = rubro.subrubros.find(s => s.codigo.toString() === subrubroCodigo && s.nombre === subrubroName);
-
-        // Si no existe, crea uno nuevo
-        if (!subrubro) {
-          subrubro = { codigo: subrubroCodigo, nombre: subrubroName, auxiliares: [] };
-          rubro.subrubros.push(subrubro);
-        }
-
-        let auxiliar = subrubro.auxiliares.find(s => s.codigo.toString() === auxiliarCodigo && s.nombre === auxiliarName);
-
-        if (!auxiliar) {
-          auxiliar = { codigo: auxiliarCodigo, nombre: auxiliarName, items: [] };
-          rubro.subrubros.push(auxiliar);
-        }
-
-        auxiliar.items = auxiliar.items || [];
-        const item = { nombre: itemName };
-        // Añadir ítems al auxiliar
-        monthlyValues.forEach((monthValue, monthIndex) => {
-            const numericValue = monthValue || 0;
-
-            if (numericValue !== 0) {
-                const inputId = `outlined-basic-${updatedRubros.indexOf(rubro)}-${rubro.subrubros.indexOf(subrubro)}-${subrubro.auxiliares.indexOf(auxiliar)}-${auxiliar.items.length}-${monthIndex}`;
-
-                // Organizar los valores y el id a la que pertenece
-                newInputValues[inputId] = {
-                  value: numericValue,
-                  centroCostoid: itemCodigo,
-                  id: ids[monthIndex] ? parseInt(ids[monthIndex]) : null, // Extrae el id del mes actual si existe
-                };
-        
-                // Actualizar los totales del rubro
-                if (!newRubrosTotals[rubroName]) {
-                  newRubrosTotals[rubroName] = Array(12).fill(0);
-                }
-                newRubrosTotals[rubroName][monthIndex] += numericValue;
-        
-                // Actualizar los totales mensuales generales
-                newMonthlyTotals[monthIndex] += numericValue;
-        
-                // Asignar el valor mensual al ítem
-                item[inputId] = numericValue;
-            }
-        });
-        // Solo agregar el ítem si tiene al menos un valor diferente de 0
-        if (Object.keys(item).length > 1) {
-          auxiliar.items.push(item);
-        }
+      });
+      // Solo agregar el ítem si tiene al menos un valor diferente de 0
+      if (Object.keys(item).length > 1) {
+        auxiliar.items.push(item);
+      }
     }
 
     setUpdatedRubros([...updatedRubros]);
@@ -459,7 +566,7 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
     setIsLoading(true);
     const csrftoken = getCookie("csrftoken");
     const token = localStorage.getItem("token");
-  
+
     const data = Object.keys(inputValues).map((inputId) => {
       const [
         _,
@@ -472,9 +579,9 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
       ] = inputId.split("-");
       const inputValue = inputValues[inputId];
       let presupuestomes = inputValue?.value;
-  
+
       presupuestomes = isNaN(presupuestomes) ? 0 : parseInt(presupuestomes);
-  
+
       return {
         id: inputValue.id ? parseInt(inputValue.id) : null,
         usuario: userId,
@@ -486,9 +593,6 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
         item: parseInt(itemIndex),
         meses: parseInt(colIndex),
         presupuestomes: Math.round(presupuestomes),
-        updatedRubros: updatedRubros,
-        rubrosTotals: rubrosTotals,
-        monthlyTotals: monthlyTotals,
       };
     });
 
@@ -499,16 +603,29 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
       }
       return result;
     };
-  
-    const dataChunks = chunkArray(data, 100);
+
+    const dataChunks = chunkArray(data, 50);
     let totalUpdated = 0;
     let totalCreated = 0;
-  
-    try {
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  
-      for (const chunk of dataChunks) {
+    try {
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      for (let i = 0; i < dataChunks.length; i++) {
+        const chunk = dataChunks[i];
+
+        // Add updatedRubros, rubrosTotals, and monthlyTotals to only the last chunk
+        const payload =
+          i === dataChunks.length - 1
+            ? chunk.map((item) => ({
+                ...item,
+                updatedRubros,
+                rubrosTotals,
+                monthlyTotals,
+              }))
+            : chunk;
+
         const response = await fetch(`${API_URL}/presupuestos/batch-update/`, {
           method: "PATCH",
           headers: {
@@ -516,24 +633,22 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
             Authorization: `Token ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(chunk),
+          body: JSON.stringify(payload),
           credentials: "include",
         });
-  
+
         if (!response.ok) {
           throw new Error("Error en la respuesta del servidor");
         }
-  
+
         const result = await response.json();
-      
-        
         totalUpdated += result.updated || 0;
         totalCreated += result.created || 0;
       }
-  
+
       await deleteDataFromDB("selectedPresupuesto", SELECTED_PRESUPUESTO_KEY);
       await deleteDataFromDB("rubrosData", RUBROS_DATA_KEY);
-  
+
       setSnackbarMessage(
         `Presupuesto actualizado exitosamente. ${totalUpdated} actualizados, ${totalCreated} creados.`
       );
@@ -564,10 +679,21 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
                 <Typography>Rubro/Mes</Typography>
               </th>
               {[
-                "Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic",
+                "Ene",
+                "Feb",
+                "Mar",
+                "Abr",
+                "May",
+                "Jun",
+                "Jul",
+                "Ago",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dic",
               ].map((month, index) => (
                 <th key={index} style={styles.tableCell}>
-                  <Typography>{month}</Typography>
+                  <Typography variant="body1">{month}</Typography>
                 </th>
               ))}
               <th style={styles.tableCell}>
@@ -579,16 +705,20 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
             {Object.entries(rubrosTotals).map(([rubroName, totals], index) => (
               <tr key={index}>
                 <td style={styles.tableCell}>
-                  <Typography>{rubroName}</Typography>
+                  <Typography variant="caption">{rubroName}</Typography>
                 </td>
                 {totals.map((total, monthIndex) => (
                   <td key={monthIndex} style={styles.totalCell(total)}>
-                    <Typography>{Math.round(total).toLocaleString("es-ES")}</Typography>
+                    <Typography>
+                      {Math.round(total).toLocaleString("es-ES")}
+                    </Typography>
                   </td>
                 ))}
                 <td style={styles.totalCell(calculateAnnualTotal(totals))}>
-                  <Typography>      
-                    {Math.round(calculateAnnualTotal(totals)).toLocaleString("es-ES")}
+                  <Typography>
+                    {Math.round(calculateAnnualTotal(totals)).toLocaleString(
+                      "es-ES"
+                    )}
                   </Typography>
                 </td>
               </tr>
@@ -599,12 +729,16 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
               </td>
               {monthlyTotals.map((total, index) => (
                 <td key={index} style={styles.totalCell(total)}>
-                  <Typography>{Math.round(total).toLocaleString("es-ES")}</Typography>
+                  <Typography>
+                    {Math.round(total).toLocaleString("es-ES")}
+                  </Typography>
                 </td>
               ))}
               <td style={styles.totalCell(calculateAnnualTotal(monthlyTotals))}>
                 <Typography>
-                  {Math.round(calculateAnnualTotal(monthlyTotals)).toLocaleString("es-ES")}
+                  {Math.round(
+                    calculateAnnualTotal(monthlyTotals)
+                  ).toLocaleString("es-ES")}
                 </Typography>
               </td>
             </tr>
@@ -622,13 +756,15 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
           }
         >
           <thead>
-            <tr>
+            <tr style={{ width: "100%" }}>
               <th style={styles.tableHeader}>
                 <Typography>Rubro</Typography>
               </th>
               {MONTHS.map((month, index) => (
                 <th style={styles.monthHeader} key={index}>
-                  <Typography>{month} {year}</Typography>
+                  <Typography>
+                    {month} {year}
+                  </Typography>
                 </th>
               ))}
               <th style={styles.tableCell}>
@@ -675,89 +811,116 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
                   <Typography>{`${subrubro.codigo} - ${subrubro.nombre}`}</Typography>
                 </AccordionSummary>
 
-                {Array.isArray(subrubro.auxiliares) && subrubro.auxiliares.map((auxiliar, auxiliarIndex) => (
-                  <Accordion key={auxiliarIndex} sx={{ marginLeft: 4 }}>
-                    <AccordionSummary
-                      expandIcon={<ExpandMoreIcon />}
-                      aria-controls={`panel${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-content`}
-                      id={`panel${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-header`}
-                      sx={{
-                        ...(router.pathname === "/uen/constructora"
-                          ? styles.accordionSummaryConstructora
-                          : router.pathname === "/uen/inmobiliaria"
-                          ? styles.accordionSummaryInmobiliaria
-                          : router.pathname === "/uen/unidad-apoyo"
-                          ? styles.accordionSummaryUA
-                          : styles.accordionSummary),
-                      }}
-                    >
-                      {/* Mostrar el código y nombre del auxiliar */}
-                      <Typography>{`${auxiliar.codigo} - ${auxiliar.nombre}`}</Typography>
-                    </AccordionSummary>
+                {Array.isArray(subrubro.auxiliares) &&
+                  subrubro.auxiliares.map((auxiliar, auxiliarIndex) => (
+                    <Accordion key={auxiliarIndex} sx={{ marginLeft: 4 }}>
+                      <AccordionSummary
+                        expandIcon={<ExpandMoreIcon />}
+                        aria-controls={`panel${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-content`}
+                        id={`panel${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-header`}
+                        sx={{
+                          ...(router.pathname === "/uen/constructora"
+                            ? styles.accordionSummaryConstructora
+                            : router.pathname === "/uen/inmobiliaria"
+                            ? styles.accordionSummaryInmobiliaria
+                            : router.pathname === "/uen/unidad-apoyo"
+                            ? styles.accordionSummaryUA
+                            : styles.accordionSummary),
+                        }}
+                      >
+                        {/* Mostrar el código y nombre del auxiliar */}
+                        <Typography>{`${auxiliar.codigo} - ${auxiliar.nombre}`}</Typography>
+                      </AccordionSummary>
 
-                    {/* Aquí va el contenido adicional para cada auxiliar */}
-                    <AccordionSummary>
-                      {auxiliar.items && auxiliar.items.length > 0 ? (
-                        <table style={{ width: "500px" }}>
-                          <tbody>
-                            {auxiliar.items.map((item, itemIndex) => (
-                              <tr key={itemIndex}>
-                                <td style={styles.itemCell}>
-                                  <Typography>{item.nombre}</Typography>
-                                  <HoverButton
-                                    onRemove={() =>
-                                      handleRemoveItem(rubroIndex, subrubroIndex, auxiliarIndex, itemIndex)
-                                    }
-                                  />
-                                </td>
-                                {MONTHS.map((_, colIndex) => {
-                                  const inputId = `outlined-basic-${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-${itemIndex}-${colIndex}`;
-                                  return (
-                                    <td key={colIndex}>
-                                      <input
-                                        type="number"
-                                        id={inputId}
-                                        style={styles.input}
-                                        value={inputValues[inputId]?.value || ""}
-                                        onChange={(e) =>
-                                          handleInputChange(e.target.value, colIndex, rubro.nombre, inputId)
-                                        }
-                                      />
-                                    </td>
-                                  );
-                                })}
-                                <td>
-                                  {(() => {
+                      {/* Aquí va el contenido adicional para cada auxiliar */}
+                      <AccordionSummary>
+                        {auxiliar.items && auxiliar.items.length > 0 ? (
+                          <table style={{ width: "500px" }}>
+                            <tbody>
+                              {auxiliar.items.map((item, itemIndex) => (
+                                <tr key={itemIndex}>
+                                  <td style={styles.itemCell}>
+                                    <Typography>{item.nombre}</Typography>
+                                    <HoverButton
+                                      onRemove={() =>
+                                        handleRemoveItem(
+                                          rubroIndex,
+                                          subrubroIndex,
+                                          auxiliarIndex,
+                                          itemIndex
+                                        )
+                                      }
+                                    />
+                                  </td>
+                                  {MONTHS.map((_, colIndex) => {
+                                    const inputId = `outlined-basic-${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-${itemIndex}-${colIndex}`;
+                                    return (
+                                      <td key={colIndex}>
+                                        <input
+                                          type="number"
+                                          id={inputId}
+                                          style={styles.input}
+                                          value={
+                                            inputValues[inputId]?.value || ""
+                                          }
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              e.target.value,
+                                              colIndex,
+                                              rubro.nombre,
+                                              inputId
+                                            )
+                                          }
+                                        />
+                                      </td>
+                                    );
+                                  })}
+                                  <td>
+                                    {(() => {
                                       // Verificar que `inputValues` esté definido y calcular el total
-                                      const total = MONTHS.reduce((sum, _, colIndex) => {
-                                        const inputId = `outlined-basic-${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-${itemIndex}-${colIndex}`;
-                                        return sum + (parseFloat(inputValues[inputId]?.value) || 0);
-                                      }, 0);
+                                      const total = MONTHS.reduce(
+                                        (sum, _, colIndex) => {
+                                          const inputId = `outlined-basic-${rubroIndex}-${subrubroIndex}-${auxiliarIndex}-${itemIndex}-${colIndex}`;
+                                          return (
+                                            sum +
+                                            (parseFloat(
+                                              inputValues[inputId]?.value
+                                            ) || 0)
+                                          );
+                                        },
+                                        0
+                                      );
 
                                       // return <Typography>{Number.isNaN(total) ? 0 : total}</Typography>; // Mostrar 0 si total es NaN o falsy
-                                      return <Typography>{total.toLocaleString("es-ES")}</Typography>;
-                                  })()}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <Typography
-                          sx={{ color: "#ABABAB", textAlign: "center" }}
-                        >
-                          No hay items disponibles
-                        </Typography>
-                      )}
-                    </AccordionSummary>
-                    <button
-                      style={styles.dialogButton}
-                      onClick={() => handleOpen(rubroIndex, subrubroIndex, auxiliarIndex)}
-                    >
-                      <AddCircleOutlineIcon />
-                    </button>
-                  </Accordion>
-                ))}
+                                      return (
+                                        <Typography>
+                                          {total.toLocaleString("es-ES")}
+                                        </Typography>
+                                      );
+                                    })()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <Typography
+                            sx={{ color: "#ABABAB", textAlign: "center" }}
+                          >
+                            No hay items disponibles
+                          </Typography>
+                        )}
+                      </AccordionSummary>
+                      <button
+                        style={styles.dialogButton}
+                        onClick={() =>
+                          handleOpen(rubroIndex, subrubroIndex, auxiliarIndex)
+                        }
+                      >
+                        <AddCircleOutlineIcon />
+                      </button>
+                    </Accordion>
+                  ))}
               </Accordion>
             ))}
           </Accordion>
@@ -834,44 +997,46 @@ const CustomTable = ({MONTHS,rubrosTotals,setRubrosTotals,setInputValues,inputVa
           Crear centro de costos
         </DialogTitle>
         <DialogContent>
-          {(Array.isArray(updatedcentroCostos) &&
-            updatedcentroCostos.length > 0 ? (
-              <Autocomplete
-                options={
-                  updatedcentroCostos.map(centroCosto => ({
-                    label: `${centroCosto.codigo} ${centroCosto.nombre} ${centroCosto.regional.nombre}`,
-                    codigo: centroCosto.codigo
-                  })) || []
+          {Array.isArray(updatedcentroCostos) &&
+          updatedcentroCostos.length > 0 ? (
+            <Autocomplete
+              options={
+                updatedcentroCostos.map((centroCosto) => ({
+                  label: `${centroCosto.codigo} ${centroCosto.nombre} ${centroCosto.regional.nombre}`,
+                  codigo: centroCosto.codigo,
+                })) || []
+              }
+              getOptionLabel={(option) => option.label}
+              isOptionEqualToValue={(option, value) =>
+                option.codigo === value.codigo
+              }
+              sx={{ width: 300, marginTop: 5 }}
+              renderInput={(params) => (
+                <TextField {...params} label="Centro Costos" />
+              )}
+              onChange={(event, newValue) => {
+                if (newValue) {
+                  setCentroCostoid(newValue.codigo);
+                  setNewItem(newValue.label);
+                } else {
+                  console.error("Centro de costos no seleccionado");
+                  setCentroCostoid(null);
+                  setNewItem("");
                 }
-                getOptionLabel={(option) => option.label}
-                isOptionEqualToValue={(option, value) => option.codigo === value.codigo}
-                sx={{ width: 300, marginTop: 5 }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Centro Costos" />
-                )}
-                onChange={(event, newValue) => {
-                  if (newValue) {
-                    setCentroCostoid(newValue.codigo);
-                    setNewItem(newValue.label);
-                  } else {
-                    console.error("Centro de costos no seleccionado");
-                    setCentroCostoid(null);
-                    setNewItem("");
-                  }
-                }}
-              />
-            ) : (
-              <Typography
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  mt: 3,
-                  alignItems: "center",
-                }}
-              >
-                No Hay Centro De Costos habilitados
-              </Typography>
-            ))}
+              }}
+            />
+          ) : (
+            <Typography
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                mt: 3,
+                alignItems: "center",
+              }}
+            >
+              No Hay Centro De Costos habilitados
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancelar</Button>

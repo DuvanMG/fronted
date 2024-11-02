@@ -34,7 +34,7 @@ const styles = {
     width: '400px',
   },
   monthHeader: {
-    width: '100px',
+    width: '150px',
   },
   accordionSummary: {
     background: "rgb(253, 128, 2)",
@@ -101,6 +101,7 @@ const styles = {
     textAlign: 'left',
     padding: '8px',
     color: total >= 0 ? 'green' : 'red',
+    width:'150px'
   }),
 };
 
